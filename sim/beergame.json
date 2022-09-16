@@ -1,0 +1,159 @@
+{
+    "$schema": "https://raw.githubusercontent.com/microsoft/microsoft-bonsai-api/main/Reference/siminterface.schema.json",
+    "name": "beer_game",
+    "timeout": 60,
+    "description": {
+      "config": {
+        "category": "Struct",
+        "fields": [
+          {
+            "name": "number_of_lights",
+            "type": {
+              "category": "Number",
+              "values": [4],
+              "comment": "Number of traffic lights in the sim."
+            }
+          },
+          {
+              "name": "init_cars_min",
+              "type": {
+                "category": "Number",
+                "start": 0,
+                "stop": 100,
+                "step": 1,
+                "comment": "Minimum number of cars at the start."
+              }
+          },
+          {
+              "name": "init_cars_max",
+              "type": {
+                "category": "Number",
+                "start": 0,
+                "stop": 100,
+                "step": 1,
+                "comment": "Maximum number of cars at the start."
+              }
+          },
+          {
+              "name": "current_green",
+              "type": {
+                "category": "Number",
+                "start": 0,
+                "stop": 3,
+                "step": 1,
+                "comment": "Which light is currently on green, needs to be an index (0 start) in range of number of lights."
+              }
+          },
+          {
+              "name": "min_cars_through_green_per_timestep",
+              "type": {
+                "category": "Number",
+                "start": 0,
+                "stop": 100,
+                "step": 1,
+                "comment": "Minimum number of cars that go through on green."
+              }
+          },
+          {
+              "name": "max_cars_through_green_per_timestep",
+              "type": {
+                "category": "Number",
+                "start": 0,
+                "stop": 100,
+                "step": 1,
+                "comment": "Maximum number of cars that go through on green."
+              }
+          },
+          {
+              "name": "c_new_cars_per_timestep",
+              "type": {
+                "category": "Number",
+                "start": 0,
+                "stop": 50,
+                "step": 1,
+                "comment": "C value of new cars arriving with Burr12 distribution at the light per timestep."
+              }
+          },
+          {
+              "name": "d_new_cars_per_timestep",
+              "type": {
+                "category": "Number",
+                "start": 0,
+                "stop": 1,
+                "step": 0.01,
+                "comment": "C value of new cars arriving with Burr12 distribution at the light per timestep."
+              }
+          }
+      
+      ]
+      },
+      "action": {
+        "category": "Struct",
+        "fields": [
+          {
+            "name": "command",
+            "type": {
+              "category": "Number",
+              "start": 0,
+              "stop": 3,
+              "step": 1,
+              "comment": "The index of the light to turn green."
+             }
+          }
+        ]
+      },
+      "state": {
+        "category": "Struct",
+        "fields": [
+          {
+            "name": "cars",
+            "type": {
+              "category": "Array",
+              "length": 4,
+              "type": {
+                "category": "Number"
+              },
+              "comment": "Number of cars at each light."
+            }
+          },
+          {
+            "name": "lights",
+            "type": {
+              "category": "Array",
+              "length": 4,
+              "type": {"category": "Number"},
+              "comment": "Boolean for the current green light."
+            }
+          },
+          {
+            "name": "current_green",
+            "type": {
+              "category": "Number",
+              "comment": "Index of the current green."
+            }
+          },
+          {
+            "name": "num_lights",
+            "type": {
+              "category": "Number",
+              "comment": "Number of lights."
+            }
+          },
+          {
+            "name": "total_queue_length",
+            "type": {
+              "category": "Number",
+              "comment": "Total queue length."
+            }
+          },
+          {
+            "name": "max_queue_length",
+            "type": {
+              "category": "Number",
+              "comment": "Max queue length."
+            }
+          }
+        ]
+      }
+    }
+  }
