@@ -112,7 +112,7 @@ class BeerGame(object):
         )
 
         self.create_agents()
-        self.update_open_orders()
+        # self.update_open_orders()
 
     @property
     def num_agents(self) -> int:
@@ -120,6 +120,7 @@ class BeerGame(object):
         return len(self.agent_types)
 
     def update_open_orders(self):
+        """Update the open orders of all agents."""
         for k in range(0, self.num_agents):
             if k < self.num_agents - 1:
                 self.agents[k].open_order = (
@@ -131,50 +132,95 @@ class BeerGame(object):
 
     def step(self, action: int) -> None:
         """
-        Move the state of the traffic simulation forward one time unit.
+        Move the state of the simulation forward one time unit.
+        The action is placed first because of the demands for Bonsai. Otherwise it would be the last step, this is why the time is increased second.
 
         Args:
             action: a dict with a key 'command'.
         """
-        self.handle_action(action)
-        self.next()
-
-    def handle_action(self, action):
-        """Handle the action."""
-        assert self.agents
-        self.agents[0].arriving_orders[self.time] += self.new_demand
-        for agent in self.agents:
-            agent.update_action(self.time, action)
-
-    def next(self):
-        """Move the simulation forward."""
-        assert self.agents
-        lead_time_in = randint(
-            self.leadtime_receiving_low[-1], self.leadtime_receiving_high[-1]
-        )
-        self.agents[-1].arriving_shipments[self.time + lead_time_in] += self.agents[
-            -1
-        ].action
-
-        for k in range(len(self.agents) - 1, -1, -1):  # [3,2,1,0]
-            self.agents[k].update_inventory(self.time)
-            possible_shipment = min(
-                self.agents[k].inventory_level
-                + self.agents[k].arriving_shipments[self.time],
-                -self.agents[k].inventory_level
-                + self.agents[k].arriving_orders[self.time],
-            )
-            if self.agents[k].agent_num > 0:
-                lead_time_in = randint(
-                    self.leadtime_receiving_low[k], self.leadtime_receiving_high[k]
-                )
-                self.agents[k - 1].arriving_shipments[
-                    self.time + lead_time_in
-                ] += possible_shipment
-            # update IL
-            self.agents[k].inventory_level -= self.agents[k].arriving_orders[self.time]
-            self.agents[k].update_reward()
+        self.place_orders(action)
         self.time += 1
+        self.receive_incoming_shipments()
+        self.receive_incoming_orders()
+        self.deliver_shipments()
+
+        # self.handle_action(action)
+        # self.next()
+
+    def place_orders(self, action: int | None) -> None:
+        """Place the new orders."""
+        for agent in self.agents:
+            # determine new order
+            agent.update_orders(self.time, action)
+            # add new order to arriving orders or supplier with delay (leadtime)
+            if agent.agent_num != 4:
+                self.agents[agent.agent_num + 1].arriving_orders[
+                    self.time + randint(*agent.leadtime_orders)
+                ] += agent.order
+            else:
+                agent.arriving_shipments[
+                    self.time + randint(*agent.leadtime_receiving) + 1
+                ] += agent.order
+
+    def receive_incoming_shipments(self) -> None:
+        """Receive the incoming shipments for the current time step."""
+        for agent in self.agents:
+            agent.inventory_level += agent.arriving_shipments[self.time]
+
+    def receive_incoming_orders(self) -> None:
+        """Receive the incoming orders for the current time step."""
+        for agent in self.agents:
+            agent.open_order += agent.arriving_orders[self.time]
+
+    def deliver_shipments(self) -> None:
+        """Deliver the shipments for the current time step."""
+        for agent in self.agents:
+            lead_time_rec = randint(*agent.leadtime_receiving)
+            if agent.agent_num != 4:
+                possible_shipment = min(
+                    self.agents[agent.agent_num + 1].open_order,
+                    self.agents[agent.agent_num + 1].inventory_level,
+                )
+                agent.arriving_shipments[self.time + lead_time_rec] += possible_shipment
+                self.agents[agent.agent_num + 1].open_order -= possible_shipment
+
+    # def handle_action(self, action):
+    #     """Handle the action."""
+    #     assert self.agents
+    #     lead_time = randint(
+    #         self.leadtime_receiving_low[0],
+    #         self.leadtime_receiving_high[0],
+    #     )
+    #     self.agents[0].arriving_orders[self.time] += self.new_demand
+
+    # def next(self):
+    #     """Move the simulation forward."""
+    #     assert self.agents
+    #     lead_time_in = randint(
+    #         self.leadtime_receiving_low[-1], self.leadtime_receiving_high[-1]
+    #     )
+    #     self.agents[-1].arriving_shipments[self.time + lead_time_in] += self.agents[
+    #         -1
+    #     ].action
+
+    #     for k in range(len(self.agents) - 1, -1, -1):  # [3,2,1,0]
+    #         self.agents[k].update_inventory(self.time)
+    #         possible_shipment = min(
+    #             self.agents[k].inventory_level
+    #             + self.agents[k].arriving_shipments[self.time],
+    #             -self.agents[k].inventory_level
+    #             + self.agents[k].arriving_orders[self.time],
+    #         )
+    #         if self.agents[k].agent_num > 0:
+    #             lead_time_in = randint(
+    #                 self.leadtime_receiving_low[k], self.leadtime_receiving_high[k]
+    #             )
+    #             self.agents[k - 1].arriving_shipments[
+    #                 self.time + lead_time_in
+    #             ] += possible_shipment
+    #         # update IL
+    #         self.agents[k].inventory_level -= self.agents[k].arriving_orders[self.time]
+    #         self.agents[k].update_reward()
 
     @property
     def state(self) -> dict[str, Any]:

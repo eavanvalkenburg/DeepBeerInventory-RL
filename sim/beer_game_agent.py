@@ -28,7 +28,7 @@ class BeerGameAgent(object):
         self.agent_type = agent_type
 
         self.cur_reward = 0
-        self.action = 0
+        self.order = 0
 
         self.inventory_level = self.sim.inventory_levels[self.agent_num]
         self.open_order = 0
@@ -43,21 +43,17 @@ class BeerGameAgent(object):
         self.c_h = self.sim.costs_holding[self.agent_num]
         self.c_p = self.sim.costs_shortage[self.agent_num]
 
+        self.leadtime_orders = (
+            self.sim.leadtime_orders_low[self.agent_num],
+            self.sim.leadtime_orders_high[self.agent_num],
+        )
+        self.leadtime_receiving = (
+            self.sim.leadtime_receiving_low[self.agent_num],
+            self.sim.leadtime_receiving_high[self.agent_num],
+        )
+
         self.a_b, self.b_b = self.set_a_b_values(
-            float(
-                np.mean(
-                    (
-                        self.sim.leadtime_receiving_low[self.agent_num],
-                        self.sim.leadtime_receiving_high[self.agent_num],
-                    )
-                )
-                + np.mean(
-                    (
-                        self.sim.leadtime_orders_low[self.agent_num],
-                        self.sim.leadtime_orders_high[self.agent_num],
-                    )
-                )
-            )
+            float(np.mean((self.leadtime_receiving)) + np.mean((self.leadtime_orders)))
         )
 
     def set_a_b_values(self, mean_leadtimes: float) -> tuple[float, float]:
@@ -82,7 +78,7 @@ class BeerGameAgent(object):
         return sum(self.arriving_shipments.values())
 
     @abstractmethod
-    def update_action(self, time: int, action: int | None = None):
+    def update_orders(self, time: int, action: int | None = None):
         """Updates the action of the agent"""
 
     def update_inventory(self, time):
@@ -113,7 +109,7 @@ class BeerGameAgent(object):
             "open_order": self.open_order,
             "arriving_shipments": self.arriving_shipments,
             "cur_reward": self.cur_reward,
-            "action": self.action,
+            "action": self.order,
         }
 
 
@@ -136,7 +132,7 @@ class BeerGameAgentBonsai(BeerGameAgent):
         """Updates the action of the agent"""
         if action is None:
             raise ValueError("Action cannot be None for a Bonsai agent.")
-        self.action = action
+        self.order = action
 
 
 class BeerGameAgentSTRM(BeerGameAgent):
@@ -157,9 +153,9 @@ class BeerGameAgentSTRM(BeerGameAgent):
         self.alpha_b = self.sim.strm_alpha[self.agent_num]
         self.beta_b = self.sim.strm_beta[self.agent_num]
 
-    def update_action(self, time: int, action: int | None = None):
+    def update_orders(self, time: int, action: int | None = None):
         """Updates the action of the agent"""
-        self.action = max(
+        self.order = max(
             0,
             round(
                 self.arriving_shipments[time]
@@ -185,9 +181,9 @@ class BeerGameAgentBaseStock(BeerGameAgent):
         )
         self.basestock = 0
 
-    def update_action(self, time: int, action: int | None = None):
+    def update_orders(self, time: int, action: int | None = None):
         """Updates the action of the agent"""
-        self.action = max(
+        self.order = max(
             0,
             self.basestock
             - (self.inventory_level + self.open_order - self.arriving_orders[time]),
@@ -209,6 +205,6 @@ class BeerGameAgentRandom(BeerGameAgent):
             AGENT_TYPE_RANDOM,
         )
 
-    def update_action(self, time: int, action: int | None = None):
+    def update_orders(self, time: int, action: int | None = None):
         """Updates the action of the agent"""
-        self.action = randint(0, self.sim.max_action)
+        self.order = randint(0, self.sim.max_action)
