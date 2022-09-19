@@ -51,6 +51,7 @@ class TemplateSimulatorSession:
             Returns float of current values from the simulator
         """
         state = self.simulator.state.copy()
+        _LOGGER.debug("Current state: %s", state)
         return state
 
     def halted(self) -> bool:
@@ -64,18 +65,14 @@ class TemplateSimulatorSession:
         return False
 
     def episode_start(self, config: Mapping[str, Any] = default_config) -> None:
-        """Initialize simulator environment using scenario paramters from inkling. Note, `simulator.reset()` initializes the simulator parameters for initial positions and velocities of the cart and pole using a random sampler. See the source for details.
+        """
+        Initialize simulator environment using scenario paramters from inkling. Note, `simulator.reset()` initializes the simulator parameters for initial positions and velocities of the cart and pole using a random sampler. See the source for details.
 
         Parameters
         ----------
         config : Dict, optional. The following keys are supported:
-            - init_cars_min = 0,
-            - init_cars_max = 10,
-            - current_green = None,
-            - cars_through_green_per_timestep = None,
-            - min_new_cars_per_timestep = None,
-            - max_new_cars_per_timestep = None,
         """
+        _LOGGER.debug("Starting episode with config: %s", config)
         self.simulator.reset(**config)
 
     def episode_step(self, action: Mapping[str, int]) -> None:
@@ -86,7 +83,7 @@ class TemplateSimulatorSession:
         action : Dict
             An action to take to modulate environment.
         """
-        self.simulator.step(int(action["command"]))
+        self.simulator.step(int(action["order"]))
 
 
 class SimulatorSession:

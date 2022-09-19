@@ -1,9 +1,14 @@
+from __future__ import annotations
 from abc import abstractmethod
 
 import numpy as np
 from random import randint
+import logging
+from typing import TYPE_CHECKING
 
-from .beer_game import BeerGame
+if TYPE_CHECKING:
+    from .beer_game import BeerGame
+
 from .const import (
     AGENT_TYPE_BASESTOCK,
     AGENT_TYPE_BONSAI,
@@ -11,6 +16,8 @@ from .const import (
     AGENT_TYPE_STRM,
     DEMAND_DISTRIBUTION_NORMAL,
 )
+
+_LOGGER = logging.getLogger(__name__)
 
 
 class BeerGameAgent(object):
@@ -27,19 +34,24 @@ class BeerGameAgent(object):
         self.agent_num = agent_num
         self.agent_type = agent_type
 
-        self.cur_reward = 0
-        self.order = 0
+        self.current_costs = 0
+        self.total_costs = 0
 
         self.inventory_level = self.sim.inventory_levels[self.agent_num]
-        self.open_order = 0
-        self.arriving_shipments = {0: 0}
-        self.arriving_orders = {0: 0}
+        self.customer_orders_to_be_filled = 0  # to customer
+        self.supplier_orders_to_be_delivered = 0  # to supplier
+        self.arriving_shipments = {}  # from supplier
+        self.arriving_orders = {}  # from customer
 
         if self.agent_num > 0:
             for i in range(self.sim.leadtime_orders_low[self.agent_num - 1]):
-                self.arriving_orders[i] = self.sim.arriving_orders[self.agent_num - 1]
+                if i > 0:
+                    self.arriving_orders[i] = self.sim.arriving_orders[
+                        self.agent_num - 1
+                    ]
         for i in range(self.sim.leadtime_receiving_low[self.agent_num]):
-            self.arriving_shipments[i] = self.sim.arriving_shipments[self.agent_num]
+            if i > 0:
+                self.arriving_shipments[i] = self.sim.arriving_shipments[self.agent_num]
         self.c_h = self.sim.costs_holding[self.agent_num]
         self.c_p = self.sim.costs_shortage[self.agent_num]
 
@@ -55,6 +67,114 @@ class BeerGameAgent(object):
         self.a_b, self.b_b = self.set_a_b_values(
             float(np.mean((self.leadtime_receiving)) + np.mean((self.leadtime_orders)))
         )
+
+    def place_order(self, time: int, action: int | None = None) -> None:
+        """Handle the order of the agent"""
+        order = min(self.get_order(time, action), self.sim.max_action)
+        self.supplier_orders_to_be_delivered += order
+        if self.supplier is not None:
+            self.supplier.plan_order(time, order)
+            return
+        self.plan_shipment(time, order)
+
+    def receive_items(self, time):
+        """Updates the IL and customer_orders_to_be_filled at time t, after recieving "rec" number of items"""
+        shipment = self.arriving_shipments.pop(time, 0)
+        self.inventory_level += shipment
+        self.supplier_orders_to_be_delivered -= shipment
+
+    def receive_order(self, time):
+        """Updates the customer_orders_to_be_filled at time t, after recieving orders"""
+        self.customer_orders_to_be_filled += self.arriving_orders.pop(time, 0)
+
+    def deliver_items(self, time):
+        """Updates the backorder at time t, after delivering "del" number of items"""
+        possible_shipment = min(self.inventory_level, self.customer_orders_to_be_filled)
+        self.inventory_level -= possible_shipment
+        self.customer_orders_to_be_filled -= possible_shipment
+        if self.customer is not None:
+            self.customer.plan_shipment(time, possible_shipment)
+            return
+        self.sim.total_delivered += possible_shipment
+        self.sim.outstanding_demand -= possible_shipment
+
+    def update_costs(self):
+        """Update total_costs returns the total_costs at the current state"""
+        # cost (holding + backorder) for one time unit
+        self.current_costs = self.c_p * max(
+            0, self.customer_orders_to_be_filled
+        ) + self.c_h * max(0, self.inventory_level)
+        self.total_costs += self.current_costs
+
+    def plan_shipment(self, time: int, amount: int) -> None:
+        """Add a shipment to arriving shipments."""
+        if (
+            shipment_time := time + randint(*self.leadtime_receiving) + 1
+        ) in self.arriving_shipments:
+            self.arriving_shipments[shipment_time] += amount
+        else:
+            self.arriving_shipments[shipment_time] = amount
+
+    def plan_order(self, time: int, amount: int) -> None:
+        """Add an order to arriving orders."""
+        if (
+            order_time := time + randint(*self.leadtime_orders) + 1
+        ) in self.arriving_orders:
+            self.arriving_orders[order_time] += amount
+        else:
+            self.arriving_orders[order_time] = amount
+
+    @property
+    def state(self):
+        """This function returns a dict of the current state of the agent"""
+        _LOGGER.debug("State for agent: %s", self.agent_num)
+        _LOGGER.debug("   Inventory: %s", self.inventory_level)
+        _LOGGER.debug(
+            "   Customer orders to be filled: %s", self.customer_orders_to_be_filled
+        )
+        _LOGGER.debug(
+            "   Supplier orders to be delivered: %s",
+            self.supplier_orders_to_be_delivered,
+        )
+        _LOGGER.debug("    Arriving shipments: %s", self.arriving_shipments)
+        _LOGGER.debug("    Arriving orders: %s", self.arriving_orders)
+        _LOGGER.debug("    Current costs: %s", self.current_costs)
+        _LOGGER.debug("    Total costs: %s", self.total_costs)
+        return {
+            "inventory_level": self.inventory_level,
+            "customer_orders_to_be_filled": self.customer_orders_to_be_filled,
+            "supplier_orders_to_be_delivered": self.supplier_orders_to_be_delivered,
+            "arriving_shipments": self.sum_arriving_shipments,
+            "arriving_orders": self.sum_arriving_orders,
+            "current_costs": self.current_costs,
+            "total_costs": self.total_costs,
+        }
+
+    @property
+    def is_manufacturer(self) -> bool:
+        """Returns True if the agent is a manufacturer"""
+        return self.agent_num == len(self.sim.agents) - 1
+
+    @property
+    def is_retailer(self) -> bool:
+        """Returns True if the agent is a retailer"""
+        return self.agent_num == 0
+
+    @property
+    def supplier(self) -> BeerGameAgent | None:
+        """Return the supplier of this agent."""
+        assert self.sim.agents
+        if self.is_manufacturer:
+            return None
+        return self.sim.agents[self.agent_num + 1]
+
+    @property
+    def customer(self) -> BeerGameAgent | None:
+        """Return the supplier of this agent."""
+        assert self.sim.agents
+        if self.is_retailer:
+            return None
+        return self.sim.agents[self.agent_num - 1]
 
     def set_a_b_values(self, mean_leadtimes: float) -> tuple[float, float]:
         """Set the a_b and b_b values based on the demand distribution"""
@@ -78,39 +198,8 @@ class BeerGameAgent(object):
         return sum(self.arriving_shipments.values())
 
     @abstractmethod
-    def update_orders(self, time: int, action: int | None = None):
+    def get_order(self, time: int, action: int | None = None) -> int:
         """Updates the action of the agent"""
-
-    def update_inventory(self, time):
-        """Updates the IL and open_order at time t, after recieving "rec" number of items"""
-        self.inventory_level = (
-            self.inventory_level + self.arriving_shipments[time]
-        )  # inverntory level update
-        self.open_order = (
-            self.open_order - self.arriving_shipments[time]
-        )  # invertory in transient update
-
-    def update_reward(self):
-        """Update Reward returns the reward at the current state"""
-        # cost (holding + backorder) for one time unit
-        self.cur_reward = (
-            -(
-                self.c_p * max(0, -self.inventory_level)
-                + self.c_h * max(0, self.inventory_level)
-            )
-            / 200.0
-        )  # self.config.Ttest #
-
-    @property
-    def state(self):
-        """This function returns a dict of the current state of the agent"""
-        return {
-            "inventory_level": self.inventory_level,
-            "open_order": self.open_order,
-            "arriving_shipments": self.arriving_shipments,
-            "cur_reward": self.cur_reward,
-            "action": self.order,
-        }
 
 
 class BeerGameAgentBonsai(BeerGameAgent):
@@ -128,11 +217,11 @@ class BeerGameAgentBonsai(BeerGameAgent):
             AGENT_TYPE_BONSAI,
         )
 
-    def update_action(self, time: int, action: int | None = None):
+    def get_order(self, time: int, action: int | None = None) -> int:
         """Updates the action of the agent"""
         if action is None:
             raise ValueError("Action cannot be None for a Bonsai agent.")
-        self.order = action
+        return action
 
 
 class BeerGameAgentSTRM(BeerGameAgent):
@@ -153,14 +242,14 @@ class BeerGameAgentSTRM(BeerGameAgent):
         self.alpha_b = self.sim.strm_alpha[self.agent_num]
         self.beta_b = self.sim.strm_beta[self.agent_num]
 
-    def update_orders(self, time: int, action: int | None = None):
+    def get_order(self, time: int, action: int | None = None) -> int:
         """Updates the action of the agent"""
-        self.order = max(
+        return max(
             0,
             round(
-                self.arriving_shipments[time]
+                self.arriving_shipments.get(time, 0)
                 + self.alpha_b * (self.inventory_level - self.a_b)
-                + self.beta_b * (self.open_order - self.b_b)
+                + self.beta_b * (self.customer_orders_to_be_filled - self.b_b)
             ),
         )
 
@@ -181,12 +270,16 @@ class BeerGameAgentBaseStock(BeerGameAgent):
         )
         self.basestock = 0
 
-    def update_orders(self, time: int, action: int | None = None):
+    def get_order(self, time: int, action: int | None = None) -> int:
         """Updates the action of the agent"""
-        self.order = max(
+        return max(
             0,
-            self.basestock
-            - (self.inventory_level + self.open_order - self.arriving_orders[time]),
+            (
+                self.inventory_level
+                + self.customer_orders_to_be_filled
+                - self.arriving_orders.get(time, 0)
+            )
+            - self.basestock,
         )
 
 
@@ -205,6 +298,6 @@ class BeerGameAgentRandom(BeerGameAgent):
             AGENT_TYPE_RANDOM,
         )
 
-    def update_orders(self, time: int, action: int | None = None):
+    def get_order(self, time: int, action: int | None = None) -> int:
         """Updates the action of the agent"""
-        self.order = randint(0, self.sim.max_action)
+        return randint(0, 3)  # self.customer_orders_to_be_filled * 2)

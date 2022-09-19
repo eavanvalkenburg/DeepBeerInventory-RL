@@ -1,7 +1,7 @@
 from random import randint
 from time import gmtime, strftime
 from typing import Any
-
+import logging
 import numpy as np
 
 from .beer_game_agent import (
@@ -20,6 +20,8 @@ from .const import (
     DEMAND_DISTRIBUTION_UNIFORM,
 )
 
+_LOGGER = logging.getLogger(__name__)
+
 
 class BeerGame(object):
     """Main class for the simulation"""
@@ -30,6 +32,7 @@ class BeerGame(object):
         self.inventory_levels = [0, 0, 0, 0]
         self.arriving_orders = [0, 0, 0, 0]
         self.arriving_shipments = [0, 0, 0, 0]
+        self.total_delivered: int = 0
         self.agents: list[BeerGameAgent] = []
         self.max_action: int = 61
 
@@ -66,11 +69,11 @@ class BeerGame(object):
         action_high: int = 2,
         agent_types: list[str] = [
             AGENT_TYPE_BONSAI,
-            AGENT_TYPE_STRM,
-            AGENT_TYPE_STRM,
-            AGENT_TYPE_STRM,
+            AGENT_TYPE_RANDOM,
+            AGENT_TYPE_RANDOM,
+            AGENT_TYPE_RANDOM,
         ],
-        costs_shortage: list[float] = [2, 1, 0, 0],
+        costs_shortage: list[float] = [2, 0, 0, 0],
         costs_holding: list[float] = [2, 2, 2, 2],
         strm_alpha: list[float] = [-0.5, -0.5, -0.5, -0.5],
         strm_beta: list[float] = [-0.2, -0.2, -0.2, -0.2],
@@ -87,6 +90,8 @@ class BeerGame(object):
         self.inventory_levels = inventory_initial
         self.arriving_orders = arriving_orders_initial
         self.arriving_shipments = arriving_shipments_initial
+        self.total_delivered = 0
+        self.outstanding_demand = 0
 
         self.demand_distribution = demand_distribution
         self.demand_low = demand_low
@@ -112,23 +117,16 @@ class BeerGame(object):
         )
 
         self.create_agents()
-        # self.update_open_orders()
+
+    @property
+    def manufacturing_agent_num(self) -> int:
+        """Return the manufacturing agent number."""
+        return self.agents[-1].agent_num
 
     @property
     def num_agents(self) -> int:
         """Return the number of agents."""
         return len(self.agent_types)
-
-    def update_open_orders(self):
-        """Update the open orders of all agents."""
-        for k in range(0, self.num_agents):
-            if k < self.num_agents - 1:
-                self.agents[k].open_order = (
-                    self.agents[k + 1].sum_arriving_orders
-                    + self.agents[k].sum_arriving_shipments
-                )
-            else:
-                self.agents[k].open_order = self.agents[k].sum_arriving_shipments
 
     def step(self, action: int) -> None:
         """
@@ -138,89 +136,29 @@ class BeerGame(object):
         Args:
             action: a dict with a key 'command'.
         """
-        self.place_orders(action)
+        assert self.agents
+        _LOGGER.debug("Updating orders")
+        new = self.new_demand()
+        self.agents[0].plan_order(self.time, new)
+        self.outstanding_demand += new
+
+        for agent in self.agents:
+            agent.place_order(self.time, action)
+        _LOGGER.debug("Increasing time")
         self.time += 1
-        self.receive_incoming_shipments()
-        self.receive_incoming_orders()
-        self.deliver_shipments()
-
-        # self.handle_action(action)
-        # self.next()
-
-    def place_orders(self, action: int | None) -> None:
-        """Place the new orders."""
+        _LOGGER.debug("Time is now: %s", self.time)
+        _LOGGER.debug("Receiving Incoming Shipments")
         for agent in self.agents:
-            # determine new order
-            agent.update_orders(self.time, action)
-            # add new order to arriving orders or supplier with delay (leadtime)
-            if agent.agent_num != 4:
-                self.agents[agent.agent_num + 1].arriving_orders[
-                    self.time + randint(*agent.leadtime_orders)
-                ] += agent.order
-            else:
-                agent.arriving_shipments[
-                    self.time + randint(*agent.leadtime_receiving) + 1
-                ] += agent.order
-
-    def receive_incoming_shipments(self) -> None:
-        """Receive the incoming shipments for the current time step."""
+            agent.receive_items(self.time)
+        _LOGGER.debug("Receiving Incoming Orders")
         for agent in self.agents:
-            agent.inventory_level += agent.arriving_shipments[self.time]
-
-    def receive_incoming_orders(self) -> None:
-        """Receive the incoming orders for the current time step."""
+            agent.receive_order(self.time)
+        _LOGGER.debug("Delivering shipments")
         for agent in self.agents:
-            agent.open_order += agent.arriving_orders[self.time]
-
-    def deliver_shipments(self) -> None:
-        """Deliver the shipments for the current time step."""
+            agent.deliver_items(self.time)
+        _LOGGER.debug("Updating costs")
         for agent in self.agents:
-            lead_time_rec = randint(*agent.leadtime_receiving)
-            if agent.agent_num != 4:
-                possible_shipment = min(
-                    self.agents[agent.agent_num + 1].open_order,
-                    self.agents[agent.agent_num + 1].inventory_level,
-                )
-                agent.arriving_shipments[self.time + lead_time_rec] += possible_shipment
-                self.agents[agent.agent_num + 1].open_order -= possible_shipment
-
-    # def handle_action(self, action):
-    #     """Handle the action."""
-    #     assert self.agents
-    #     lead_time = randint(
-    #         self.leadtime_receiving_low[0],
-    #         self.leadtime_receiving_high[0],
-    #     )
-    #     self.agents[0].arriving_orders[self.time] += self.new_demand
-
-    # def next(self):
-    #     """Move the simulation forward."""
-    #     assert self.agents
-    #     lead_time_in = randint(
-    #         self.leadtime_receiving_low[-1], self.leadtime_receiving_high[-1]
-    #     )
-    #     self.agents[-1].arriving_shipments[self.time + lead_time_in] += self.agents[
-    #         -1
-    #     ].action
-
-    #     for k in range(len(self.agents) - 1, -1, -1):  # [3,2,1,0]
-    #         self.agents[k].update_inventory(self.time)
-    #         possible_shipment = min(
-    #             self.agents[k].inventory_level
-    #             + self.agents[k].arriving_shipments[self.time],
-    #             -self.agents[k].inventory_level
-    #             + self.agents[k].arriving_orders[self.time],
-    #         )
-    #         if self.agents[k].agent_num > 0:
-    #             lead_time_in = randint(
-    #                 self.leadtime_receiving_low[k], self.leadtime_receiving_high[k]
-    #             )
-    #             self.agents[k - 1].arriving_shipments[
-    #                 self.time + lead_time_in
-    #             ] += possible_shipment
-    #         # update IL
-    #         self.agents[k].inventory_level -= self.agents[k].arriving_orders[self.time]
-    #         self.agents[k].update_reward()
+            agent.update_costs()
 
     @property
     def state(self) -> dict[str, Any]:
@@ -229,13 +167,22 @@ class BeerGame(object):
         states = [agent.state for agent in self.agents]
         return {
             "inventory_levels": [a["inventory_level"] for a in states],
-            "open_orders": [a["open_order"] for a in states],
+            "customer_orders_to_be_filled": [
+                a["customer_orders_to_be_filled"] for a in states
+            ],
+            "supplier_orders_to_be_delivered": [
+                a["supplier_orders_to_be_delivered"] for a in states
+            ],
             "arriving_shipments": [a["arriving_shipments"] for a in states],
-            "cur_rewards": [a["cur_rewards"] for a in states],
-            "actions": [a["action"] for a in states],
+            "arriving_orders": [a["arriving_orders"] for a in states],
+            "current_costs": [a["current_costs"] for a in states],
+            "total_costs": [a["total_costs"] for a in states],
+            "cumulative_costs": sum([a["total_costs"] for a in states]),
+            "total_delivered": self.total_delivered,
+            "outstanding_demand": self.outstanding_demand,
+            "time": self.time,
         }
 
-    @property
     def new_demand(self) -> int:
         """Get a new demand."""
         if self.demand_distribution == DEMAND_DISTRIBUTION_NORMAL:

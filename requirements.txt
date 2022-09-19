@@ -1,3 +1,7 @@
-tensorflow==1.15
-matplotlib
-numpyencoder
+aiohttp
+asyncio
+msal-extensions
+bonsai-cli==1.0.*
+microsoft-bonsai-api==0.1.*
+python-dotenv==0.13.*
+scipy
