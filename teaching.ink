@@ -143,6 +143,10 @@ graph (input: SimState): Action {
                 drive costs_down:
                     state.current_costs[bonsai_agent_num]
                     in Goal.Range(0, 10)
+                # drive inventory:
+                #     state.inventory_levels[bonsai_agent_num] in Goal.Range(5,15)
+                # minimize backorders:
+                #     state.customer_orders_to_be_filled[bonsai_agent_num] in Goal.RangeBelow(10)            
             }
 
             lesson `Lesson 1` {
