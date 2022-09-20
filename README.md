@@ -29,5 +29,8 @@ To run manually (with you as a agent), run:
 - The potential is there to use the same code with more then 4 agents, but Bonsai cannot deal with that in the same sim, so that would need a seperate `beergame.json` definition.
 - The same with multiple agents trained by Bonsai.
 
+## Collaboration
+When developing make sure to do a pull request to Develop, this also creates a seperate container in ACR, main creates a container with tag: latest.
+
 ### Disclaimer
 This was created loosely based on the code from the forked repo, the old code is partly present in the old folder, but it is easier to just look at the original repo since some files were changed.
