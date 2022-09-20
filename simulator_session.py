@@ -64,7 +64,7 @@ class TemplateSimulatorSession:
         """
         return False
 
-    def episode_start(self, config: Mapping[str, Any] = default_config) -> None:
+    def episode_start(self, config: dict[str, Any] = default_config) -> None:
         """
         Initialize simulator environment using scenario paramters from inkling. Note, `simulator.reset()` initializes the simulator parameters for initial positions and velocities of the cart and pole using a random sampler. See the source for details.
 
@@ -72,6 +72,15 @@ class TemplateSimulatorSession:
         ----------
         config : Dict, optional. The following keys are supported:
         """
+        config["agent_types"] = ["bonsai", "basestock", "basestock", "basestock"]
+        if "agent_type1" in config:
+            config["agent_types"][0] = config.pop("agent_type1")
+        if "agent_type2" in config:
+            config["agent_types"][1] = config.pop("agent_type2")
+        if "agent_type3" in config:
+            config["agent_types"][2] = config.pop("agent_type3")
+        if "agent_type4" in config:
+            config["agent_types"][3] = config.pop("agent_type4")
         _LOGGER.debug("Starting episode with config: %s", config)
         self.simulator.reset(**config)
 

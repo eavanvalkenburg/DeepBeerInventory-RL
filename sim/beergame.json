@@ -1,372 +1,494 @@
 {
-    "$schema": "https://raw.githubusercontent.com/microsoft/microsoft-bonsai-api/main/Reference/siminterface.schema.json",
-    "name": "beer_game",
-    "timeout": 60,
-    "description": {
-      "config": {
-        "category": "Struct",
-        "fields": [
-          {
-            "name": "demand_distribution",
-            "type": {
-              "category": "String",
-              "value": ["normal", "uniform"],
-              "defaultValue": "uniform",
-              "comment": "The type of demand curve used, uniform or normal."
-            }
-          },
-          {
-              "name": "demand_low",
-              "type": {
-                "category": "Number",
-                "start": 0,
-                "stop": 5,
-                "step": 1,
-                "defaultValue": 0,
-                "comment": "Minimum number of demand per timestep, used with uniform distribution."
-              }
-          },
-          {
-              "name": "demand_high",
-              "type": {
-                "category": "Number",
-                "start": 0,
-                "stop": 100,
-                "step": 1,
-                "defaultValue": 3,
-                "comment": "Maximum number of demand per timestep, used with uniform distribution."
-              }
-          },
-          {
-              "name": "demand_mu",
-              "type": {
-                "category": "Number",
-                "start": 0,
-                "stop": 20,
-                "step": 1,
-                "defaultValue": 10,
-                "comment": "The mu of the normal distribution for demand."
-              }
-          },
-          {
-              "name": "demand_sigma",
-              "type": {
-                "category": "Number",
-                "start": 0,
-                "stop": 10,
-                "step": 1,
-                "defaultValue": 2,
-                "comment": "The sigma of the normal distribution for demand."
-              }
-          },
-          {
-              "name": "action_high",
-              "type": {
-                "category": "Number",
-                "start": 0,
-                "stop": 100,
-                "step": 1,
-                "defaultValue": 2,
-                "comment": "Factor influencing the max order (action)."
-              }
-          },
-          {
-              "name": "agent_types",
-              "type": {
-                "category": "Array",
-                "length": 4,
-                "type": {
-                  "category": "String",
-                  "values": ["bonsai", "basestock",  "random", "strm"],
-                  "comment": "The type of agent."
-                },
-                "defaultValue": ["bonsai", "strm", "strm", "strm"],
-                "values": [["bonsai", "basestock",  "basestock", "basestock"], ["bonsai", "strm", "strm", "strm"], ["bonsai", "random", "random", "random"]], 
-                "comment": "List of types of agents, defaults [bonsai, strm, strm, strm], other options are basestock and random."
-              }
-          },
-          {
-              "name": "costs_shortage",
-              "type": {
-                "category": "Array",
-                "length": 4,
-                "type": {
-                  "category": "Number",
-                  "start": 0,
-                  "stop": 100,
-                  "step": 0.1,
-                  "comment": "The cost of a shortage."
-                },
-                "defaultValue": [2, 0, 0, 0],
-                "comment": "Shortage costs per player."
-              }
-          },
-          {
-              "name": "costs_holding",
-              "type": {
-                "category": "Array",
-                "length": 4,
-                "type": {
-                  "category": "Number",
-                  "start": 0,
-                  "stop": 100,
-                  "step": 0.1,
-                  "comment": "The cost of holding stock."
-                },
-                "defaultValue": [2, 2, 2, 2],
-                "comment": "Holding costs per player."
-              }
-          },
-          {
-              "name": "strm_alpha",
-              "type": {
-                "category": "Array",
-                "length": 4,
-                "type": {
-                  "category": "Number",
-                  "start": -10,
-                  "stop": 10,
-                  "step": 0.1
-                },
-                "defaultValue": [-0.5, -0.5, -0.5, -0.5],
-                "comment": "Alpha of Sterman formula for each player, only used if the player uses Sterman."
-              }
-          },
-          {
-              "name": "strm_beta",
-              "type": {
-                "category": "Array",
-                "length": 4,
-                "type": {
-                  "category": "Number",
-                  "start": -10,
-                  "stop": 10,
-                  "step": 0.1
-                },
-                "defaultValue": [-0.2, -0.2, -0.2, -0.2],
-                "comment": "Beta of Sterman formula for each player, only used if the player uses Sterman."
-              }
-          },
-          {
-              "name": "leadtime_receiving_low",
-              "type": {
-                "category": "Array",
-                "length": 4,
-                "type": {
-                  "category": "Number",
-                  "start": 0,
-                  "stop": 100,
-                  "step": 1
-                },
-                "defaultValue": [2, 2, 2, 4],
-                "comment": "The min lead time for receiving items per player."
-              }
-          },
-          {
-              "name": "leadtime_receiving_high",
-              "type": {
-                "category": "Array",
-                "length": 4,
-                "type": {
-                  "category": "Number",
-                  "start": 0,
-                  "stop": 100,
-                  "step": 1
-                },
-                "defaultValue": [2, 2, 2, 0],
-                "comment": "The max lead time for receiving items per player."
-              }
-          },
-          {
-              "name": "leadtime_orders_low",
-              "type": {
-                "category": "Array",
-                "length": 4,
-                "type": {
-                  "category": "Number",
-                  "start": 0,
-                  "stop": 100,
-                  "step": 1
-                },
-                "defaultValue": [2, 2, 2, 0],
-                "comment": "The min lead time for receiving orders per player."
-              }
-          },
-          {
-              "name": "leadtime_orders_high",
-              "type": {
-                "category": "Array",
-                "length": 4,
-                "type": {
-                  "category": "Number",
-                  "start": 0,
-                  "stop": 100,
-                  "step": 1
-                },
-                "defaultValue": [2, 2, 2, 0],
-                "comment": "The max lead time for receiving orders per player."
-              }
-          },
-          {
-              "name": "inventory_initial",
-              "type": {
-                "category": "Array",
-                "length": 4,
-                "type": {
-                  "category": "Number",
-                  "start": 0,
-                  "stop": 100,
-                  "step": 1
-                },
-                "defaultValue": [0, 0, 0, 0],
-                "comment": "The initial inventory."
-              }
-          },
-          {
-              "name": "arriving_orders_initial",
-              "type": {
-                "category": "Array",
-                "length": 4,
-                "type": {
-                  "category": "Number",
-                  "start": 0,
-                  "stop": 100,
-                  "step": 1
-                },
-                "defaultValue": [0, 0, 0, 0],
-                "comment": "The initial number of arriving orders."
-              }
-          },
-          {
-              "name": "arriving_shipments_initial",
-              "type": {
-                "category": "Array",
-                "length": 4,
-                "type": {
-                  "category": "Number",
-                  "start": 0,
-                  "stop": 100,
-                  "step": 1
-                },
-                "defaultValue": [0, 0, 0, 0],
-                "comment": "The initial number of arriving shipments."
-              }
+  "$schema": "https://raw.githubusercontent.com/microsoft/microsoft-bonsai-api/main/Reference/siminterface.schema.json",
+  "name": "beer_game",
+  "timeout": 60,
+  "description": {
+    "config": {
+      "category": "Struct",
+      "fields": [
+        {
+          "name": "demand_distribution",
+          "type": {
+            "category": "String",
+            "values": [
+              "normal",
+              "pattern",
+              "uniform"
+            ],
+            "defaultValue": "uniform",
+            "comment": "The type of demand curve used, uniform, normal or pattern. Default is uniform."
           }
-      
-      ]
-      },
-      "action": {
-        "category": "Struct",
-        "fields": [
-          {
-            "name": "order",
+        },
+        {
+          "name": "demand_low",
+          "type": {
+            "category": "Number",
+            "start": 0,
+            "stop": 5,
+            "step": 1,
+            "defaultValue": 0,
+            "comment": "Minimum number of demand per timestep, used with uniform distribution. Default is 0."
+          }
+        },
+        {
+          "name": "demand_high",
+          "type": {
+            "category": "Number",
+            "start": 0,
+            "stop": 100,
+            "step": 1,
+            "defaultValue": 3,
+            "comment": "Maximum number of demand per timestep, used with uniform distribution. Default is 3."
+          }
+        },
+        {
+          "name": "demand_mu",
+          "type": {
+            "category": "Number",
+            "start": 0,
+            "stop": 20,
+            "step": 1,
+            "defaultValue": 10,
+            "comment": "The mu of the normal distribution for demand. Default is 10."
+          }
+        },
+        {
+          "name": "demand_sigma",
+          "type": {
+            "category": "Number",
+            "start": 0,
+            "stop": 10,
+            "step": 1,
+            "defaultValue": 2,
+            "comment": "The sigma of the normal distribution for demand. Default is 2."
+          }
+        },
+        {
+          "name": "demand_pattern_initial_value",
+          "type": {
+            "category": "Number",
+            "start": 0,
+            "stop": 20,
+            "step": 1,
+            "defaultValue": 4,
+            "comment": "The initial value for the demand pattern. Default is 4"
+          }
+        },
+        {
+          "name": "demand_pattern_stepped_value",
+          "type": {
+            "category": "Number",
+            "start": 0,
+            "stop": 20,
+            "step": 1,
+            "defaultValue": 8,
+            "comment": "The value for the demand pattern after the step, the time of the step is defined in demand_pattern_step_time. Default is 8"
+          }
+        },
+        {
+          "name": "demand_pattern_step_time",
+          "type": {
+            "category": "Number",
+            "start": 0,
+            "stop": 20,
+            "step": 1,
+            "defaultValue": 4,
+            "comment": "The time at which the pattern distribution goes up, from demand_low to demand_high. Default is 4"
+          }
+        },
+        {
+          "name": "action_high",
+          "type": {
+            "category": "Number",
+            "start": 0,
+            "stop": 100,
+            "step": 1,
+            "defaultValue": 2,
+            "comment": "Factor influencing the max order (action). Default is 2."
+          }
+        },
+        {
+          "name": "agent_type1",
+          "type": {
+            "category": "String",
+            "values": [
+              "basestock",
+              "bonsai",
+              "random",
+              "strm"
+            ],
+            "defaultValue": "bonsai",
+            "comment": "The type of agent 1, default is bonsai."
+          }
+        },
+        {
+          "name": "agent_type2",
+          "type": {
+            "category": "String",
+            "values": [
+              "basestock",
+              "bonsai",
+              "random",
+              "strm"
+            ],
+            "defaultValue": "basestock",
+            "comment": "The type of agent 2, default is basestock."
+          }
+        },
+        {
+          "name": "agent_type3",
+          "type": {
+            "category": "String",
+            "values": [
+              "basestock",
+              "bonsai",
+              "random",
+              "strm"
+            ],
+            "defaultValue": "basestock",
+            "comment": "The type of agent 3, default is basestock."
+          }
+        },
+        {
+          "name": "agent_type4",
+          "type": {
+            "category": "String",
+            "values": [
+              "basestock",
+              "bonsai",
+              "random",
+              "strm"
+            ],
+            "defaultValue": "basestock",
+            "comment": "The type of agent 4, default is basestock."
+          }
+        },
+        {
+          "name": "costs_shortage",
+          "type": {
+            "category": "Array",
+            "length": 4,
             "type": {
               "category": "Number",
               "start": 0,
+              "stop": 100,
+              "step": 0.1,
+              "comment": "The cost of a shortage."
+            },
+            "defaultValue": [
+              2,
+              0,
+              0,
+              0
+            ],
+            "comment": "Shortage costs per player. Default is 2 for player 1 and 0 for the rest."
+          }
+        },
+        {
+          "name": "costs_holding",
+          "type": {
+            "category": "Array",
+            "length": 4,
+            "type": {
+              "category": "Number",
+              "start": 0,
+              "stop": 100,
+              "step": 0.1,
+              "comment": "The cost of holding stock."
+            },
+            "defaultValue": [
+              2,
+              2,
+              2,
+              2
+            ],
+            "comment": "Inventory holding costs per player. Default is 2 for each player."
+          }
+        },
+        {
+          "name": "strm_alpha",
+          "type": {
+            "category": "Array",
+            "length": 4,
+            "type": {
+              "category": "Number",
+              "start": -10,
               "stop": 10,
-              "step": 1,
-              "comment": "The number of items to order for the Bonsai agent."
-             }
+              "step": 0.1
+            },
+            "defaultValue": [
+              -0.5,
+              -0.5,
+              -0.5,
+              -0.5
+            ],
+            "comment": "Alpha of Sterman formula for each player, only used if the player uses Sterman."
           }
-        ]
-      },
-      "state": {
-        "category": "Struct",
-        "fields": [
-          {
-            "name": "inventory_levels",
-            "type": {
-              "category": "Array",
-              "length": 4,
-              "type": {
-                "category": "Number"
-              },
-              "comment": "Number of items in inventory for each player."
-            }
-          },
-          {
-            "name": "customer_orders_to_be_filled",
-            "type": {
-              "category": "Array",
-              "length": 4,
-              "type": {"category": "Number"},
-              "comment": "Number of items in customer orders for each player."
-            }
-          },
-          {
-            "name": "supplier_orders_to_be_delivered",
-            "type": {
-              "category": "Array",
-              "length": 4,
-              "type": {"category": "Number"},
-              "comment": "Number of items in outstanding to supplier for each player."
-            }
-          },
-          {
-            "name": "arriving_shipments",
-            "type": {
-              "category": "Array",
-              "length": 4,
-              "type": {"category": "Number"},
-              "comment": "Number of items on the way for each player."
-            }
-          },
-          {
-            "name": "arriving_orders",
-            "type": {
-              "category": "Array",
-              "length": 4,
-              "type": {"category": "Number"},
-              "comment": "Number of orders on the way for each player."
-            }
-          },
-          {
-            "name": "current_costs",
-            "type": {
-              "category": "Array",
-              "length": 4,
-              "type": {"category": "Number"},
-              "comment": "Current costs for each player."
-            }
-          },
-          {
-            "name": "total_costs",
-            "type": {
-              "category": "Array",
-              "length": 4,
-              "type": {"category": "Number"},
-              "comment": "Total costs for each player."
-            }
-          },
-          {
-            "name": "cumulative_costs",
+        },
+        {
+          "name": "strm_beta",
+          "type": {
+            "category": "Array",
+            "length": 4,
             "type": {
               "category": "Number",
-              "comment": "Costs for all players combined."
-            }
-          },
-          {
-            "name": "total_delivered",
-            "type": {
-              "category": "Number",
-              "comment": "Number of items delivered to customers."
-            }
-          },
-          {
-            "name": "outstanding_demand",
-            "type": {
-              "category": "Number",
-              "comment": "Number of items to be delivered to customers."
-            }
-          },
-          {
-            "name": "time",
-            "type": {
-              "category": "Number",
-              "comment": "Current time in the simulation."
-            }
+              "start": -10,
+              "stop": 10,
+              "step": 0.1
+            },
+            "defaultValue": [
+              -0.2,
+              -0.2,
+              -0.2,
+              -0.2
+            ],
+            "comment": "Beta of Sterman formula for each player, only used if the player uses Sterman."
           }
-        ]
-      }
+        },
+        {
+          "name": "leadtime_receiving_low",
+          "type": {
+            "category": "Array",
+            "length": 4,
+            "type": {
+              "category": "Number",
+              "start": 0,
+              "stop": 100,
+              "step": 1
+            },
+            "defaultValue": [
+              2,
+              2,
+              2,
+              4
+            ],
+            "comment": "The min lead time for receiving items per player. Default is 2,2,2,4."
+          }
+        },
+        {
+          "name": "leadtime_receiving_high",
+          "type": {
+            "category": "Array",
+            "length": 4,
+            "type": {
+              "category": "Number",
+              "start": 0,
+              "stop": 100,
+              "step": 1
+            },
+            "defaultValue": [
+              2,
+              2,
+              2,
+              4
+            ],
+            "comment": "The max lead time for receiving items per player. Default is 2,2,2,4."
+          }
+        },
+        {
+          "name": "leadtime_orders_low",
+          "type": {
+            "category": "Array",
+            "length": 4,
+            "type": {
+              "category": "Number",
+              "start": 0,
+              "stop": 100,
+              "step": 1
+            },
+            "defaultValue": [
+              2,
+              2,
+              2,
+              0
+            ],
+            "comment": "The min lead time for receiving orders per player. Default is 2,2,2,0."
+          }
+        },
+        {
+          "name": "leadtime_orders_high",
+          "type": {
+            "category": "Array",
+            "length": 4,
+            "type": {
+              "category": "Number",
+              "start": 0,
+              "stop": 100,
+              "step": 1
+            },
+            "defaultValue": [
+              2,
+              2,
+              2,
+              0
+            ],
+            "comment": "The max lead time for receiving orders per player. Default is 2,2,2,0."
+          }
+        },
+        {
+          "name": "inventory_initial",
+          "type": {
+            "category": "Array",
+            "length": 4,
+            "type": {
+              "category": "Number",
+              "start": 0,
+              "stop": 100,
+              "step": 1
+            },
+            "defaultValue": [
+              0,
+              0,
+              0,
+              0
+            ],
+            "comment": "The initial inventory. Default is 0 for each player."
+          }
+        },
+        {
+          "name": "arriving_orders_initial",
+          "type": {
+            "category": "Array",
+            "length": 4,
+            "type": {
+              "category": "Number",
+              "start": 0,
+              "stop": 100,
+              "step": 1
+            },
+            "defaultValue": [
+              0,
+              0,
+              0,
+              0
+            ],
+            "comment": "The initial number of arriving orders. Default is 0 for each player."
+          }
+        },
+        {
+          "name": "arriving_shipments_initial",
+          "type": {
+            "category": "Array",
+            "length": 4,
+            "type": {
+              "category": "Number",
+              "start": 0,
+              "stop": 100,
+              "step": 1
+            },
+            "defaultValue": [
+              0,
+              0,
+              0,
+              0
+            ],
+            "comment": "The initial number of arriving shipments. Default is 0 for each player."
+          }
+        }
+      ]
+    },
+    "action": {
+      "category": "Struct",
+      "fields": [
+        {
+          "name": "order",
+          "type": {
+            "category": "Number",
+            "start": 0,
+            "stop": 20,
+            "step": 1,
+            "comment": "The number of items to order for the Bonsai agent."
+          }
+        }
+      ]
+    },
+    "state": {
+      "category": "Struct",
+      "fields": [
+        {
+          "name": "inventory_levels",
+          "type": {
+            "category": "Array",
+            "length": 4,
+            "type": {
+              "category": "Number"
+            },
+            "comment": "Number of items in inventory for each player."
+          }
+        },
+        {
+          "name": "customer_orders_to_be_filled",
+          "type": {
+            "category": "Array",
+            "length": 4,
+            "type": {
+              "category": "Number"
+            },
+            "comment": "Number of items in customer orders for each player."
+          }
+        },
+        {
+          "name": "supplier_orders_to_be_delivered",
+          "type": {
+            "category": "Array",
+            "length": 4,
+            "type": {
+              "category": "Number"
+            },
+            "comment": "Number of items in outstanding to supplier for each player."
+          }
+        },
+        {
+          "name": "current_costs",
+          "type": {
+            "category": "Array",
+            "length": 4,
+            "type": {
+              "category": "Number"
+            },
+            "comment": "Current costs for each player."
+          }
+        },
+        {
+          "name": "total_costs",
+          "type": {
+            "category": "Array",
+            "length": 4,
+            "type": {
+              "category": "Number"
+            },
+            "comment": "Total costs for each player."
+          }
+        },
+        {
+          "name": "cumulative_costs",
+          "type": {
+            "category": "Number",
+            "comment": "Costs for all players combined."
+          }
+        },
+        {
+          "name": "total_delivered",
+          "type": {
+            "category": "Number",
+            "comment": "Number of items delivered to customers."
+          }
+        },
+        {
+          "name": "outstanding_demand",
+          "type": {
+            "category": "Number",
+            "comment": "Number of items to be delivered to customers."
+          }
+        },
+        {
+          "name": "time",
+          "type": {
+            "category": "Number",
+            "comment": "Current time in the simulation."
+          }
+        }
+      ]
     }
   }
+}

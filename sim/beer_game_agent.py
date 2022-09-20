@@ -73,7 +73,7 @@ class BeerGameAgent(object):
 
     def place_order(self, time: int, action: int | None = None) -> None:
         """Handle the order of the agent"""
-        order = min(self.get_order(time, action), self.sim.max_action)
+        order = min(self.decide_order(time, action), self.sim.max_action)
         self.previous_orders[time] = order
         self.supplier_orders_to_be_delivered += order
         if self.supplier is not None:
@@ -140,16 +140,14 @@ class BeerGameAgent(object):
             "   Supplier orders to be delivered: %s",
             self.supplier_orders_to_be_delivered,
         )
-        _LOGGER.debug("    Arriving shipments: %s", self.arriving_shipments)
-        _LOGGER.debug("    Arriving orders: %s", self.arriving_orders)
+        # _LOGGER.debug("    Arriving shipments: %s", self.arriving_shipments)
+        # _LOGGER.debug("    Arriving orders: %s", self.arriving_orders)
         _LOGGER.debug("    Current costs: %s", self.current_costs)
         _LOGGER.debug("    Total costs: %s", self.total_costs)
         return {
             "inventory_level": self.inventory_level,
             "customer_orders_to_be_filled": self.customer_orders_to_be_filled,
             "supplier_orders_to_be_delivered": self.supplier_orders_to_be_delivered,
-            "arriving_shipments": self.next_arriving_shipments,
-            "arriving_orders": self.next_arriving_orders,
             "current_costs": self.current_costs,
             "total_costs": self.total_costs,
         }
@@ -192,24 +190,6 @@ class BeerGameAgent(object):
         )
 
     @property
-    def next_arriving_shipments(self) -> dict[int, int]:
-        """Return the next arriving shipments"""
-        return {
-            (key - self.sim.time): val
-            for key, val in self.arriving_shipments.items()
-            if self.sim.time < key <= self.sim.time + 4
-        }
-
-    @property
-    def next_arriving_orders(self) -> dict[int, int]:
-        """Return the next arriving orders"""
-        return {
-            (key - self.sim.time): val
-            for key, val in self.arriving_orders.items()
-            if self.sim.time < key <= self.sim.time + 4
-        }
-
-    @property
     def previous_arrived_shipments(self) -> dict[int, int]:
         """Return the next arriving shipments"""
         return {
@@ -237,7 +217,7 @@ class BeerGameAgent(object):
         }
 
     @abstractmethod
-    def get_order(self, time: int, action: int | None = None) -> int:
+    def decide_order(self, time: int, action: int | None = None) -> int:
         """Updates the action of the agent"""
 
 
@@ -256,7 +236,7 @@ class BeerGameAgentBonsai(BeerGameAgent):
             AGENT_TYPE_BONSAI,
         )
 
-    def get_order(self, time: int, action: int | None = None) -> int:
+    def decide_order(self, time: int, action: int | None = None) -> int:
         """Updates the action of the agent"""
         if action is None:
             raise ValueError("Action cannot be None for a Bonsai agent.")
@@ -281,14 +261,14 @@ class BeerGameAgentSTRM(BeerGameAgent):
         self.alpha_b = self.sim.strm_alpha[self.agent_num]
         self.beta_b = self.sim.strm_beta[self.agent_num]
 
-    def get_order(self, time: int, action: int | None = None) -> int:
+    def decide_order(self, time: int, action: int | None = None) -> int:
         """Updates the action of the agent"""
         return max(
             0,
             round(
                 self.arriving_shipments.get(time, 0)
                 + self.alpha_b * (self.inventory_level - self.a_b)
-                + self.beta_b * (self.customer_orders_to_be_filled - self.b_b)
+                + self.beta_b * (self.customer_orders_to_be_filled - self.b_b),
             ),
         )
 
@@ -309,7 +289,7 @@ class BeerGameAgentBaseStock(BeerGameAgent):
         )
         self.basestock = 4
 
-    def get_order(self, time: int, action: int | None = None) -> int:
+    def decide_order(self, time: int, action: int | None = None) -> int:
         """Updates the action of the agent"""
         prev_orders = self.previous_arrived_orders.values()
         if not prev_orders:
@@ -323,7 +303,6 @@ class BeerGameAgentBaseStock(BeerGameAgent):
                 - (self.supplier.customer_orders_to_be_filled if self.supplier else 0)
                 - sum(self.previous_orders_rel.values()),
             ),
-            0,
         )
 
 
@@ -342,7 +321,7 @@ class BeerGameAgentRandom(BeerGameAgent):
             AGENT_TYPE_RANDOM,
         )
 
-    def get_order(self, time: int, action: int | None = None) -> int:
+    def decide_order(self, time: int, action: int | None = None) -> int:
         """Updates the action of the agent"""
         return randint(0, 3)  # self.customer_orders_to_be_filled * 2)
 
@@ -362,7 +341,7 @@ class BeerGameAgentManual(BeerGameAgent):
             AGENT_TYPE_MANUAL,
         )
 
-    def get_order(self, time: int, action: int | None = None) -> int:
+    def decide_order(self, time: int, action: int | None = None) -> int:
         """Updates the action of the agent"""
         print("Agent State: ", self.state)
         new_order = int(input("Enter order (positive integers only): "))

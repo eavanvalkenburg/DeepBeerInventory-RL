@@ -16,6 +16,14 @@
             ],
             "console": "integratedTerminal",
             "justMyCode": true
+        },
+        {
+            "name": "Python: Run manual",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/manual.py",
+            "console": "integratedTerminal",
+            "justMyCode": true
         }
     ]
 }

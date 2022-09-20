@@ -20,6 +20,7 @@ from .const import (
     AGENT_TYPE_MANUAL,
     DEMAND_DISTRIBUTION_NORMAL,
     DEMAND_DISTRIBUTION_UNIFORM,
+    DEMAND_DISTRIBUTION_PATTERN,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -52,12 +53,15 @@ class BeerGame(object):
         self.demand_high: int = 3
         self.demand_mu: float = 10
         self.demand_sigma: float = 2
+        self.demand_pattern_initial_value: int = 4
+        self.demand_pattern_stepped_value: int = 8
+        self.demand_pattern_step_time: int = 4
 
         self.agent_types: list[str] = [
             AGENT_TYPE_BONSAI,
-            AGENT_TYPE_STRM,
-            AGENT_TYPE_STRM,
-            AGENT_TYPE_STRM,
+            AGENT_TYPE_BASESTOCK,
+            AGENT_TYPE_BASESTOCK,
+            AGENT_TYPE_BASESTOCK,
         ]
         self.costs_shortage: list[float] = [2, 1, 0, 0]
         self.costs_holding: list[float] = [2, 2, 2, 2]
@@ -72,17 +76,20 @@ class BeerGame(object):
 
     def reset(
         self,
-        demand_distribution: str = DEMAND_DISTRIBUTION_UNIFORM,  # "normal"
+        demand_distribution: str = DEMAND_DISTRIBUTION_UNIFORM,  # "normal", "pattern"
         demand_low: int = 0,  # for uniform
         demand_high: int = 3,  # for uniform
         demand_mu: float = 10,  # for normal
         demand_sigma: float = 2,  # for normal
+        demand_pattern_initial_value: int = 4,
+        demand_pattern_stepped_value: int = 8,
+        demand_pattern_step_time: int = 7,  # for pattern
         action_high: int = 2,
         agent_types: list[str] = [
             AGENT_TYPE_BONSAI,
-            AGENT_TYPE_RANDOM,
-            AGENT_TYPE_RANDOM,
-            AGENT_TYPE_RANDOM,
+            AGENT_TYPE_BASESTOCK,
+            AGENT_TYPE_BASESTOCK,
+            AGENT_TYPE_BASESTOCK,
         ],
         costs_shortage: list[float] = [2, 0, 0, 0],
         costs_holding: list[float] = [2, 2, 2, 2],
@@ -109,6 +116,10 @@ class BeerGame(object):
         self.demand_high = demand_high
         self.demand_mu = demand_mu
         self.demand_sigma = demand_sigma
+
+        self.demand_pattern_initial_value = demand_pattern_initial_value
+        self.demand_pattern_stepped_value = demand_pattern_stepped_value
+        self.demand_pattern_step_time = demand_pattern_step_time
 
         self.agent_types = agent_types
         self.costs_shortage = costs_shortage
@@ -184,8 +195,6 @@ class BeerGame(object):
             "supplier_orders_to_be_delivered": [
                 a["supplier_orders_to_be_delivered"] for a in states
             ],
-            "arriving_shipments": [a["arriving_shipments"] for a in states],
-            "arriving_orders": [a["arriving_orders"] for a in states],
             "current_costs": [a["current_costs"] for a in states],
             "total_costs": [a["total_costs"] for a in states],
             "cumulative_costs": sum([a["total_costs"] for a in states]),
@@ -198,6 +207,12 @@ class BeerGame(object):
         """Get a new demand."""
         if self.demand_distribution == DEMAND_DISTRIBUTION_NORMAL:
             return int(np.random.normal(self.demand_mu, self.demand_sigma))
+        if self.demand_distribution == DEMAND_DISTRIBUTION_PATTERN:
+            return (
+                self.demand_low
+                if self.time < self.demand_pattern_step_time
+                else self.demand_high
+            )
         return randint(self.demand_low, self.demand_high)
 
     def create_agents(self) -> None:
