@@ -10,17 +10,28 @@ from .beer_game_agent import (
     BeerGameAgentBonsai,
     BeerGameAgentRandom,
     BeerGameAgentSTRM,
+    BeerGameAgentManual,
 )
 from .const import (
     AGENT_TYPE_BASESTOCK,
     AGENT_TYPE_BONSAI,
     AGENT_TYPE_RANDOM,
     AGENT_TYPE_STRM,
+    AGENT_TYPE_MANUAL,
     DEMAND_DISTRIBUTION_NORMAL,
     DEMAND_DISTRIBUTION_UNIFORM,
 )
 
 _LOGGER = logging.getLogger(__name__)
+
+
+AGENTS = {
+    AGENT_TYPE_STRM: BeerGameAgentSTRM,
+    AGENT_TYPE_BONSAI: BeerGameAgentBonsai,
+    AGENT_TYPE_RANDOM: BeerGameAgentRandom,
+    AGENT_TYPE_BASESTOCK: BeerGameAgentBaseStock,
+    AGENT_TYPE_MANUAL: BeerGameAgentManual,
+}
 
 
 class BeerGame(object):
@@ -191,17 +202,6 @@ class BeerGame(object):
 
     def create_agents(self) -> None:
         """Create the agents."""
-        self.agents = []
-        for i in range(self.num_agents):
-            if self.agent_types[i] == AGENT_TYPE_BONSAI:
-                self.agents.append(BeerGameAgentBonsai(self, i))
-                continue
-            if self.agent_types[i] == AGENT_TYPE_RANDOM:
-                self.agents.append(BeerGameAgentRandom(self, i))
-                continue
-            if self.agent_types[i] == AGENT_TYPE_BASESTOCK:
-                self.agents.append(BeerGameAgentBaseStock(self, i))
-                continue
-            if self.agent_types[i] == AGENT_TYPE_STRM:
-                self.agents.append(BeerGameAgentSTRM(self, i))
-                continue
+        self.agents = [
+            AGENTS[self.agent_types[i]](self, i) for i in range(self.num_agents)
+        ]

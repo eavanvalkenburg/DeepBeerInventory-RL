@@ -1,5 +1,6 @@
 from __future__ import annotations
 from abc import abstractmethod
+from statistics import mean
 
 import numpy as np
 from random import randint
@@ -12,6 +13,7 @@ if TYPE_CHECKING:
 from .const import (
     AGENT_TYPE_BASESTOCK,
     AGENT_TYPE_BONSAI,
+    AGENT_TYPE_MANUAL,
     AGENT_TYPE_RANDOM,
     AGENT_TYPE_STRM,
     DEMAND_DISTRIBUTION_NORMAL,
@@ -42,6 +44,7 @@ class BeerGameAgent(object):
         self.supplier_orders_to_be_delivered = 0  # to supplier
         self.arriving_shipments = {}  # from supplier
         self.arriving_orders = {}  # from customer
+        self.previous_orders = {}
 
         if self.agent_num > 0:
             for i in range(self.sim.leadtime_orders_low[self.agent_num - 1]):
@@ -71,6 +74,7 @@ class BeerGameAgent(object):
     def place_order(self, time: int, action: int | None = None) -> None:
         """Handle the order of the agent"""
         order = min(self.get_order(time, action), self.sim.max_action)
+        self.previous_orders[time] = order
         self.supplier_orders_to_be_delivered += order
         if self.supplier is not None:
             self.supplier.plan_order(time, order)
@@ -79,13 +83,13 @@ class BeerGameAgent(object):
 
     def receive_items(self, time):
         """Updates the IL and customer_orders_to_be_filled at time t, after recieving "rec" number of items"""
-        shipment = self.arriving_shipments.pop(time, 0)
+        shipment = self.arriving_shipments.get(time, 0)
         self.inventory_level += shipment
         self.supplier_orders_to_be_delivered -= shipment
 
     def receive_order(self, time):
         """Updates the customer_orders_to_be_filled at time t, after recieving orders"""
-        self.customer_orders_to_be_filled += self.arriving_orders.pop(time, 0)
+        self.customer_orders_to_be_filled += self.arriving_orders.get(time, 0)
 
     def deliver_items(self, time):
         """Updates the backorder at time t, after delivering "del" number of items"""
@@ -144,8 +148,8 @@ class BeerGameAgent(object):
             "inventory_level": self.inventory_level,
             "customer_orders_to_be_filled": self.customer_orders_to_be_filled,
             "supplier_orders_to_be_delivered": self.supplier_orders_to_be_delivered,
-            "arriving_shipments": self.sum_arriving_shipments,
-            "arriving_orders": self.sum_arriving_orders,
+            "arriving_shipments": self.next_arriving_shipments,
+            "arriving_orders": self.next_arriving_orders,
             "current_costs": self.current_costs,
             "total_costs": self.total_costs,
         }
@@ -188,14 +192,49 @@ class BeerGameAgent(object):
         )
 
     @property
-    def sum_arriving_orders(self) -> int:
-        """Sum all arriving orders"""
-        return sum(self.arriving_orders.values())
+    def next_arriving_shipments(self) -> dict[int, int]:
+        """Return the next arriving shipments"""
+        return {
+            (key - self.sim.time): val
+            for key, val in self.arriving_shipments.items()
+            if self.sim.time < key <= self.sim.time + 4
+        }
 
     @property
-    def sum_arriving_shipments(self) -> int:
-        """Sum all arriving shipments"""
-        return sum(self.arriving_shipments.values())
+    def next_arriving_orders(self) -> dict[int, int]:
+        """Return the next arriving orders"""
+        return {
+            (key - self.sim.time): val
+            for key, val in self.arriving_orders.items()
+            if self.sim.time < key <= self.sim.time + 4
+        }
+
+    @property
+    def previous_arrived_shipments(self) -> dict[int, int]:
+        """Return the next arriving shipments"""
+        return {
+            (key - self.sim.time): val
+            for key, val in self.arriving_shipments.items()
+            if self.sim.time - 4 <= key <= self.sim.time
+        }
+
+    @property
+    def previous_arrived_orders(self) -> dict[int, int]:
+        """Return the next arriving orders"""
+        return {
+            (key - self.sim.time): val
+            for key, val in self.arriving_orders.items()
+            if self.sim.time - 4 <= key <= self.sim.time
+        }
+
+    @property
+    def previous_orders_rel(self) -> dict[int, int]:
+        """Return the next arriving orders"""
+        return {
+            (key - self.sim.time): val
+            for key, val in self.previous_orders.items()
+            if self.sim.time - 4 <= key <= self.sim.time
+        }
 
     @abstractmethod
     def get_order(self, time: int, action: int | None = None) -> int:
@@ -268,18 +307,20 @@ class BeerGameAgentBaseStock(BeerGameAgent):
             agent_num,
             AGENT_TYPE_BASESTOCK,
         )
-        self.basestock = 0
+        self.basestock = 4
 
     def get_order(self, time: int, action: int | None = None) -> int:
         """Updates the action of the agent"""
         return max(
             0,
-            (
-                self.inventory_level
+            round(
+                self.basestock
+                + 4 * mean(self.previous_arrived_orders.values())
                 + self.customer_orders_to_be_filled
-                - self.arriving_orders.get(time, 0)
-            )
-            - self.basestock,
+                - (self.supplier.customer_orders_to_be_filled if self.supplier else 0)
+                - sum(self.previous_orders_rel.values()),
+            ),
+            0,
         )
 
 
@@ -301,3 +342,27 @@ class BeerGameAgentRandom(BeerGameAgent):
     def get_order(self, time: int, action: int | None = None) -> int:
         """Updates the action of the agent"""
         return randint(0, 3)  # self.customer_orders_to_be_filled * 2)
+
+
+class BeerGameAgentManual(BeerGameAgent):
+    """Class for manual contributions."""
+
+    def __init__(
+        self,
+        sim: "BeerGame",
+        agent_num: int,
+    ):
+        """Initializes the manual agent class."""
+        super().__init__(
+            sim,
+            agent_num,
+            AGENT_TYPE_MANUAL,
+        )
+
+    def get_order(self, time: int, action: int | None = None) -> int:
+        """Updates the action of the agent"""
+        print("Agent State: ", self.state)
+        new_order = int(input("Enter order (positive integers only): "))
+        if new_order < 0:
+            raise ValueError("Order cannot be negative.")
+        return new_order
