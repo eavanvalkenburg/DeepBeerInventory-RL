@@ -1,10 +1,10 @@
+"""Code for the beer game agent."""
 from __future__ import annotations
-from abc import abstractmethod
-from statistics import mean
 
-import numpy as np
-from random import randint
 import logging
+from abc import abstractmethod
+from random import randint
+from statistics import mean
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -68,7 +68,7 @@ class BeerGameAgent(object):
         )
 
         self.a_b, self.b_b = self.set_a_b_values(
-            float(np.mean((self.leadtime_receiving)) + np.mean((self.leadtime_orders)))
+            float(mean((self.leadtime_receiving)) + mean((self.leadtime_orders)))
         )
 
     def place_order(self, time: int, action: int | None = None) -> None:
@@ -183,10 +183,8 @@ class BeerGameAgent(object):
         if self.sim.demand_distribution == DEMAND_DISTRIBUTION_NORMAL:
             return (self.sim.demand_mu, self.sim.demand_mu * mean_leadtimes)
         return (
-            float(np.mean((self.sim.demand_low, self.sim.demand_high))),
-            float(
-                np.mean((self.sim.demand_high, self.sim.demand_low)) * mean_leadtimes
-            ),
+            float(mean((self.sim.demand_low, self.sim.demand_high))),
+            float(mean((self.sim.demand_high, self.sim.demand_low)) * mean_leadtimes),
         )
 
     @property

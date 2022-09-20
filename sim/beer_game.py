@@ -1,26 +1,27 @@
-from random import randint
-from time import gmtime, strftime
-from typing import Any
+"""The main simulation engine."""
 import logging
+from random import randint
+from typing import Any
+
 import numpy as np
 
 from .beer_game_agent import (
     BeerGameAgent,
     BeerGameAgentBaseStock,
     BeerGameAgentBonsai,
+    BeerGameAgentManual,
     BeerGameAgentRandom,
     BeerGameAgentSTRM,
-    BeerGameAgentManual,
 )
 from .const import (
     AGENT_TYPE_BASESTOCK,
     AGENT_TYPE_BONSAI,
+    AGENT_TYPE_MANUAL,
     AGENT_TYPE_RANDOM,
     AGENT_TYPE_STRM,
-    AGENT_TYPE_MANUAL,
     DEMAND_DISTRIBUTION_NORMAL,
-    DEMAND_DISTRIBUTION_UNIFORM,
     DEMAND_DISTRIBUTION_PATTERN,
+    DEMAND_DISTRIBUTION_UNIFORM,
 )
 
 _LOGGER = logging.getLogger(__name__)
