@@ -20,7 +20,7 @@ _LOGGER = logging.getLogger(__name__)
 
 if __name__ == "__main__":
     _LOGGER.setLevel(logging.INFO)
-    agent_types = ["manual", "random", "random", "random"]
+    agent_types = ["manual", "basestock", "basestock", "basestock"]
 
     beergame = BeerGame()
     beergame.reset(agent_types=agent_types)

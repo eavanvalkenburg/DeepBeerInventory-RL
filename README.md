@@ -18,6 +18,11 @@ Finally:
 
 `python main.py --config-setup`
 
+To run manually (with you as a agent), run:
+
+`python manual.py`
+(exit by using ctrl+c)
+
 ## Known issues:
 - Not 100% sure everything is correct.
 - Bonsai tends to run away with a large number of orders, that is why the action is now capped at 10.

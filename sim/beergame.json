@@ -77,12 +77,12 @@
                 "length": 4,
                 "type": {
                   "category": "String",
-                  "values": ["bonsai", "bs",  "random", "strm"],
+                  "values": ["bonsai", "basestock",  "random", "strm"],
                   "comment": "The type of agent."
                 },
                 "defaultValue": ["bonsai", "strm", "strm", "strm"],
-                "values": [["bonsai", "bs",  "bs", "bs"], ["bonsai", "strm", "strm", "strm"], ["bonsai", "random", "random", "random"]], 
-                "comment": "List of types of agents, defaults [bonsai, strm, strm, strm], other options are bs and random."
+                "values": [["bonsai", "basestock",  "basestock", "basestock"], ["bonsai", "strm", "strm", "strm"], ["bonsai", "random", "random", "random"]], 
+                "comment": "List of types of agents, defaults [bonsai, strm, strm, strm], other options are basestock and random."
               }
           },
           {

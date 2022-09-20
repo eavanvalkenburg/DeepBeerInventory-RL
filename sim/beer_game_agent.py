@@ -311,11 +311,14 @@ class BeerGameAgentBaseStock(BeerGameAgent):
 
     def get_order(self, time: int, action: int | None = None) -> int:
         """Updates the action of the agent"""
+        prev_orders = self.previous_arrived_orders.values()
+        if not prev_orders:
+            prev_orders = [0]
         return max(
             0,
             round(
                 self.basestock
-                + 4 * mean(self.previous_arrived_orders.values())
+                + 4 * mean(prev_orders)
                 + self.customer_orders_to_be_filled
                 - (self.supplier.customer_orders_to_be_filled if self.supplier else 0)
                 - sum(self.previous_orders_rel.values()),
