@@ -37,7 +37,7 @@ default_config: Mapping[str, int] = {}
 class TemplateSimulatorSession:
     """Template simulator session."""
 
-    def __init__(self, env_name: str = "BeerGame") -> None:
+    def __init__(self, env_name: str = "BeerGameLocal") -> None:
         """Create Simulator Interface with the Bonsai Platform."""
         self.simulator = BeerGame()
         self.env_name = env_name
